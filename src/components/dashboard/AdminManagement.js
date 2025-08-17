@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { ENDPOINTS } from '../../utils/api';
 
 const AdminManagement = () => {
   const [admins, setAdmins] = useState([]);
@@ -53,7 +54,7 @@ const AdminManagement = () => {
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/admins');
+      const response = await axios.get(ENDPOINTS.ADMIN_ADMINS);
       const adminsData = response.data.admins || response.data || [];
       setAdmins(adminsData);
     } catch (error) {
@@ -74,7 +75,7 @@ const AdminManagement = () => {
     }
     
     try {
-      const response = await axios.post('/api/admin/admins', formData);
+      const response = await axios.post(ENDPOINTS.ADMIN_ADMINS, formData);
       
       setShowCreateModal(false);
       setFormData({
@@ -107,7 +108,7 @@ const AdminManagement = () => {
     }
     
     try {
-      await axios.put(`/api/admin/admins/${selectedAdmin._id}`, formData);
+      await axios.put(ENDPOINTS.ADMIN_ADMIN_BY_ID(selectedAdmin._id), formData);
       toast.success('Admin updated successfully');
       setShowEditModal(false);
       setSelectedAdmin(null);

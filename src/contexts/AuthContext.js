@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { ENDPOINTS } from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -29,7 +30,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyToken = async () => {
     try {
-      const response = await axios.post('/api/auth/verify', { token });
+      const response = await axios.post(ENDPOINTS.VERIFY, { token });
       if (response.data.valid) {
         setAdmin(response.data.admin);
         setToken(token);
@@ -47,7 +48,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true);
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await axios.post(ENDPOINTS.LOGIN, { email, password });
       
       const { token: newToken, admin: adminData } = response.data;
       
@@ -89,7 +90,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshToken = async () => {
     try {
-      const response = await axios.post('/api/auth/refresh', { token });
+      const response = await axios.post(ENDPOINTS.REFRESH, { token });
       const { token: newToken, admin: adminData } = response.data;
       
       // Update stored token
@@ -109,7 +110,7 @@ export const AuthProvider = ({ children }) => {
 
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const response = await axios.post('/api/auth/change-password', {
+      const response = await axios.post(ENDPOINTS.CHANGE_PASSWORD, {
         token,
         currentPassword,
         newPassword

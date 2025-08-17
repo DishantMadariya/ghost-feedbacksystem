@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import { format } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ENDPOINTS } from '../../utils/api';
 
 const DashboardHome = () => {
   const navigate = useNavigate();
@@ -29,8 +30,8 @@ const DashboardHome = () => {
     try {
       setLoading(true);
       const [statsResponse, suggestionsResponse] = await Promise.all([
-        axios.get('/api/admin/dashboard/stats'),
-        axios.get('/api/admin/suggestions?limit=5&sortBy=createdAt&sortOrder=desc')
+        axios.get(ENDPOINTS.ADMIN_DASHBOARD_STATS),
+        axios.get(`${ENDPOINTS.ADMIN_SUGGESTIONS}?limit=5&sortBy=createdAt&sortOrder=desc`)
       ]);
 
       setStats(statsResponse.data);

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Send, MessageSquare, Shield, Eye, ArrowRight, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { ENDPOINTS } from '../utils/api';
 
 const SuggestionForm = () => {
   const [categories, setCategories] = useState({});
@@ -39,7 +40,7 @@ const SuggestionForm = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('/api/suggestions/categories');
+      const response = await axios.get(ENDPOINTS.CATEGORIES);
       setCategories(response.data.categories);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
@@ -48,7 +49,7 @@ const SuggestionForm = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('/api/suggestions/stats');
+      const response = await axios.get(ENDPOINTS.STATS);
       setStats(response.data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -58,7 +59,7 @@ const SuggestionForm = () => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      await axios.post('/api/suggestions/submit', data);
+      await axios.post(ENDPOINTS.SUBMIT_SUGGESTION, data);
       setSubmitted(true);
       reset();
       toast.success('Suggestion submitted successfully!');

@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { decodeHtmlEntities } from '../../utils/textUtils';
 import { useAuth } from '../../contexts/AuthContext';
+import { ENDPOINTS } from '../../utils/api';
 
 const SuggestionDetail = () => {
   const { id } = useParams();
@@ -48,7 +49,7 @@ const SuggestionDetail = () => {
   const fetchSuggestion = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/admin/suggestions/${id}`);
+      const response = await axios.get(ENDPOINTS.ADMIN_SUGGESTION_BY_ID(id));
       setSuggestion(response.data.suggestion);
       setEditData({
         status: response.data.suggestion.status,
@@ -69,7 +70,7 @@ const SuggestionDetail = () => {
   const fetchAdmins = async () => {
     try {
       setLoadingAdmins(true);
-      const response = await axios.get('/api/admin/admins/names');
+      const response = await axios.get(ENDPOINTS.ADMIN_ADMIN_NAMES);
       setAdmins(response.data.admins);
     } catch (error) {
       console.error('Failed to fetch admins:', error);
@@ -103,7 +104,7 @@ const SuggestionDetail = () => {
 
     try {
       setSaving(true);
-      const response = await axios.put(`/api/admin/suggestions/${id}`, editData);
+      const response = await axios.put(ENDPOINTS.ADMIN_SUGGESTION_BY_ID(id), editData);
       setSuggestion(response.data.suggestion);
       setEditing(false);
       toast.success('Suggestion updated successfully');

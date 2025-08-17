@@ -8,14 +8,14 @@ import {
   Edit, 
   Trash2,
   ChevronLeft,
-  ChevronRight,
-  Plus
+  ChevronRight
 } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { decodeHtmlEntities } from '../../utils/textUtils';
 import { useAuth } from '../../contexts/AuthContext';
+import { ENDPOINTS } from '../../utils/api';
 
 const SuggestionsList = ({ status: routeStatus }) => {
   const { admin } = useAuth();
@@ -79,7 +79,7 @@ const SuggestionsList = ({ status: routeStatus }) => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('/api/suggestions/categories');
+      const response = await axios.get(ENDPOINTS.CATEGORIES);
       setCategories(response.data.categories);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
@@ -101,7 +101,7 @@ const SuggestionsList = ({ status: routeStatus }) => {
 
     if (window.confirm('Are you sure you want to delete this suggestion? This action cannot be undone.')) {
       try {
-        await axios.delete(`/api/admin/suggestions/${suggestionId}`);
+        await axios.delete(`${ENDPOINTS.ADMIN_SUGGESTIONS}/${suggestionId}`);
         toast.success('Suggestion deleted successfully');
         // Refresh the suggestions list
         fetchSuggestions();
@@ -136,7 +136,7 @@ const SuggestionsList = ({ status: routeStatus }) => {
       if (searchParams.get('limit')) params.set('limit', searchParams.get('limit'));
       
       
-      const response = await axios.get(`/api/admin/suggestions?${params}`);
+      const response = await axios.get(`${ENDPOINTS.ADMIN_SUGGESTIONS}?${params}`);
       
       // Always update with the response data, even if empty
       setSuggestions(response.data.suggestions || []);
@@ -155,7 +155,7 @@ const SuggestionsList = ({ status: routeStatus }) => {
         // If we have a routeStatus, let's check what statuses exist in the database
         if (routeStatus) {
           try {
-            const allSuggestionsResponse = await axios.get('/api/admin/suggestions?limit=100');
+            const allSuggestionsResponse = await axios.get(`${ENDPOINTS.ADMIN_SUGGESTIONS}?limit=100`);
             const allSuggestions = allSuggestionsResponse.data.suggestions || [];
             const statuses = [...new Set(allSuggestions.map(s => s.status))];
           } catch (error) {
@@ -228,7 +228,7 @@ const SuggestionsList = ({ status: routeStatus }) => {
         exportFilters.status = routeStatus;
       }
       
-      const response = await axios.post('/api/admin/export', {
+      const response = await axios.post(ENDPOINTS.ADMIN_EXPORT, {
         format,
         filters: exportFilters
       }, {
