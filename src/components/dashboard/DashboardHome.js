@@ -101,7 +101,7 @@ const DashboardHome = () => {
     escalated: item.escalated || 0
   })) || [];
 
-  const pieData = stats.statusBreakdown?.map(item => ({
+  const pieData = stats.statusStats?.map(item => ({
     name: item._id || 'Unknown',
     value: item.count || 0,
     color: getStatusColor(item._id)
@@ -146,7 +146,7 @@ const DashboardHome = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-ghost-600">Pending</p>
                 <p className="text-2xl font-bold text-ghost-900">
-                  {stats.statusBreakdown?.find(s => s._id === 'Pending')?.count || 0}
+                  {stats.statusStats?.find(s => s._id === 'Pending')?.count || 0}
                 </p>
               </div>
             </div>
@@ -162,7 +162,7 @@ const DashboardHome = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-ghost-600">Resolved</p>
                 <p className="text-2xl font-bold text-ghost-900">
-                  {stats.statusBreakdown?.find(s => s._id === 'Resolved')?.count || 0}
+                  {stats.statusStats?.find(s => s._id === 'Resolved')?.count || 0}
                 </p>
               </div>
             </div>
