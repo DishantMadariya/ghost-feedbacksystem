@@ -27,6 +27,8 @@ const AdminManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Get current admin from context
   const { admin: currentAdmin } = useAuth();
@@ -46,6 +48,41 @@ const AdminManagement = () => {
       exportData: false
     }
   });
+
+  // Password validation states
+  const [passwordValidation, setPasswordValidation] = useState({
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    isValid: false
+  });
+
+  // Password validation function
+  const validatePassword = (password) => {
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    
+    const isValid = hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+    
+    setPasswordValidation({
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSpecialChar,
+      isValid
+    });
+    
+    return isValid;
+  };
+
+  // Handle password change with validation
+  const handlePasswordChange = (password) => {
+    setFormData(prev => ({ ...prev, password }));
+    validatePassword(password);
+  };
 
   useEffect(() => {
     fetchAdmins();
@@ -73,10 +110,18 @@ const AdminManagement = () => {
       toast.error('You do not have permission to create admin accounts');
       return;
     }
+
+    // Validate password before API call
+    if (!passwordValidation.isValid) {
+      toast.error('Please ensure password meets all requirements');
+      return;
+    }
     
+    setIsCreating(true);
     try {
       const response = await axios.post(ENDPOINTS.ADMIN_ADMINS, formData);
       
+      toast.success('Admin created successfully');
       setShowCreateModal(false);
       setFormData({
         firstName: '',
@@ -92,10 +137,34 @@ const AdminManagement = () => {
           exportData: false
         }
       });
+      // Reset password validation
+      setPasswordValidation({
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSpecialChar: false,
+        isValid: false
+      });
       fetchAdmins();
     } catch (error) {
       console.error('❌ Failed to create admin:', error);
       console.error('❌ Error response:', error.response?.data);
+      
+      // Handle backend validation errors
+      if (error.response?.data?.details) {
+        const validationErrors = error.response.data.details;
+        validationErrors.forEach(err => {
+          if (err.field === 'password') {
+            toast.error(err.message);
+          } else {
+            toast.error(`${err.field}: ${err.message}`);
+          }
+        });
+      } else {
+        toast.error('Failed to create admin. Please try again.');
+      }
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -106,16 +175,58 @@ const AdminManagement = () => {
       toast.error('You do not have permission to update admin accounts');
       return;
     }
+
+    // Only COO can change passwords
+    if (formData.password && currentAdmin.role !== 'COO') {
+      toast.error('Only COO role can update admin passwords');
+      return;
+    }
+
+    // Validate password if it's being changed
+    if (formData.password && !passwordValidation.isValid) {
+      toast.error('Please ensure password meets all requirements');
+      return;
+    }
     
+    setIsUpdating(true);
     try {
-      await axios.put(ENDPOINTS.ADMIN_ADMIN_BY_ID(selectedAdmin._id), formData);
+      // If not COO, remove password from update data
+      const updateData = currentAdmin.role === 'COO' ? formData : {
+        ...formData,
+        password: undefined
+      };
+      
+      await axios.put(ENDPOINTS.ADMIN_ADMIN_BY_ID(selectedAdmin._id), updateData);
       toast.success('Admin updated successfully');
       setShowEditModal(false);
       setSelectedAdmin(null);
+      // Reset password validation
+      setPasswordValidation({
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSpecialChar: false,
+        isValid: false
+      });
       fetchAdmins();
     } catch (error) {
       console.error('Failed to update admin:', error);
-      toast.error('Failed to update admin');
+      
+      // Handle backend validation errors
+      if (error.response?.data?.details) {
+        const validationErrors = error.response.data.details;
+        validationErrors.forEach(err => {
+          if (err.field === 'password') {
+            toast.error(err.message);
+          } else {
+            toast.error(`${err.field}: ${err.message}`);
+          }
+        });
+      } else {
+        toast.error('Failed to update admin');
+      }
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -151,6 +262,14 @@ const AdminManagement = () => {
       password: '',
       role: admin.role,
       permissions: admin.permissions
+    });
+    // Reset password validation for edit mode
+    setPasswordValidation({
+      hasUppercase: false,
+      hasLowercase: false,
+      hasNumber: false,
+      hasSpecialChar: false,
+      isValid: false
     });
     setShowEditModal(true);
   };
@@ -197,6 +316,19 @@ const AdminManagement = () => {
 
   return (
     <div className={!showCreateModal ? "space-y-6" : ""}>
+      {/* Loading Overlay */}
+      {(isCreating || isUpdating) && (
+        <div className="fixed inset-0 bg-ghost-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            <p className="text-lg font-medium text-ghost-900">
+              {isCreating ? 'Creating Admin...' : 'Updating Admin...'}
+            </p>
+            <p className="text-sm text-ghost-600">Please wait while we process your request</p>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -280,6 +412,25 @@ const AdminManagement = () => {
               <h3 className="text-sm font-medium text-yellow-800">Read-Only Access</h3>
               <p className="text-sm text-yellow-700 mt-1">
                 You have <strong>view-only access</strong> to admin management. You need the <strong>manageAdmins</strong> permission to create, edit, or deactivate admin accounts.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Update Restriction Notice */}
+      {currentAdmin && currentAdmin.permissions?.manageAdmins && currentAdmin.role !== 'COO' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">Password Update Restriction</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                You can edit admin accounts, but <strong>only COO role users can update passwords</strong>. Password fields will be disabled for your role.
               </p>
             </div>
           </div>
@@ -527,6 +678,7 @@ const AdminManagement = () => {
           setFormData={setFormData}
           onSubmit={handleCreateAdmin}
           onClose={() => setShowCreateModal(false)}
+          isCreating={isCreating}
         />
       )}
 
@@ -538,6 +690,8 @@ const AdminManagement = () => {
           onSubmit={handleUpdateAdmin}
           onClose={() => setShowEditModal(false)}
           admin={selectedAdmin}
+          isUpdating={isUpdating}
+          currentAdminRole={currentAdmin?.role}
         />
       )}
 
@@ -553,7 +707,7 @@ const AdminManagement = () => {
 };
 
 // Create Admin Modal Component
-const CreateAdminModal = ({ formData, setFormData, onSubmit, onClose }) => {
+const CreateAdminModal = ({ formData, setFormData, onSubmit, onClose, isCreating }) => {
   const handlePermissionChange = (permission, value) => {
     setFormData(prev => ({
       ...prev,
@@ -562,6 +716,41 @@ const CreateAdminModal = ({ formData, setFormData, onSubmit, onClose }) => {
         [permission]: value
       }
     }));
+  };
+
+  // Password validation states for this modal
+  const [passwordValidation, setPasswordValidation] = useState({
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    isValid: false
+  });
+
+  // Password validation function for this modal
+  const validatePassword = (password) => {
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    
+    const isValid = hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+    
+    setPasswordValidation({
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSpecialChar,
+      isValid
+    });
+    
+    return isValid;
+  };
+
+  // Handle password change with validation
+  const handlePasswordChange = (password) => {
+    setFormData(prev => ({ ...prev, password }));
+    validatePassword(password);
   };
 
   return (
@@ -631,10 +820,35 @@ const CreateAdminModal = ({ formData, setFormData, onSubmit, onClose }) => {
                 type="password"
                 required
                 value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                className="input w-full"
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                className={`input w-full ${formData.password && !passwordValidation.isValid ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 placeholder="Enter password"
               />
+              
+              {/* Password Requirements */}
+              {formData.password && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs font-medium text-ghost-700">Password Requirements:</p>
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    <div className={`flex items-center space-x-1 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
+                      <span>{passwordValidation.hasUppercase ? '✓' : '✗'}</span>
+                      <span>Uppercase letter</span>
+                    </div>
+                    <div className={`flex items-center space-x-1 ${passwordValidation.hasLowercase ? 'text-green-600' : 'text-red-500'}`}>
+                      <span>{passwordValidation.hasLowercase ? '✓' : '✗'}</span>
+                      <span>Lowercase letter</span>
+                    </div>
+                    <div className={`flex items-center space-x-1 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-red-500'}`}>
+                      <span>{passwordValidation.hasNumber ? '✓' : '✗'}</span>
+                      <span>Number</span>
+                    </div>
+                    <div className={`flex items-center space-x-1 ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
+                      <span>{passwordValidation.hasSpecialChar ? '✓' : '✗'}</span>
+                      <span>Special character</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -682,8 +896,12 @@ const CreateAdminModal = ({ formData, setFormData, onSubmit, onClose }) => {
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Create Admin
+            <button 
+              type="submit" 
+              className={`btn-primary ${!passwordValidation.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!passwordValidation.isValid || isCreating}
+            >
+              {isCreating ? 'Creating...' : 'Create Admin'}
             </button>
           </div>
         </form>
@@ -693,7 +911,7 @@ const CreateAdminModal = ({ formData, setFormData, onSubmit, onClose }) => {
 };
 
 // Edit Admin Modal Component
-const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin }) => {
+const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin, isUpdating, currentAdminRole }) => {
   const handlePermissionChange = (permission, value) => {
     setFormData(prev => ({
       ...prev,
@@ -702,6 +920,43 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin }) => 
         [permission]: value
       }
     }));
+  };
+
+  // Password validation states for this modal
+  const [passwordValidation, setPasswordValidation] = useState({
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    isValid: false
+  });
+
+  // Password validation function for this modal
+  const validatePassword = (password) => {
+    if (!password) return true; // Password is optional in edit mode
+    
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    
+    const isValid = hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+    
+    setPasswordValidation({
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSpecialChar,
+      isValid
+    });
+    
+    return isValid;
+  };
+
+  // Handle password change with validation
+  const handlePasswordChange = (password) => {
+    setFormData(prev => ({ ...prev, password }));
+    validatePassword(password);
   };
 
   return (
@@ -765,14 +1020,58 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin }) => 
               <label className="block text-sm font-medium text-ghost-700 mb-2">
                 Password
               </label>
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                className="input w-full"
-                placeholder="Leave blank to keep current password"
-              />
-              <p className="text-xs text-ghost-500 mt-1">Leave blank to keep current password</p>
+              {currentAdminRole === 'COO' ? (
+                <>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
+                    className={`input w-full ${formData.password && !passwordValidation.isValid ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    placeholder="Leave blank to keep current password"
+                  />
+                  <p className="text-xs text-ghost-500 mt-1">Leave blank to keep current password</p>
+                  
+                  {/* Password Requirements - only show if password is being changed */}
+                  {formData.password && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs font-medium text-ghost-700">Password Requirements:</p>
+                      <div className="grid grid-cols-2 gap-1 text-xs">
+                        <div className={`flex items-center space-x-1 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
+                          <span>{passwordValidation.hasUppercase ? '✓' : '✗'}</span>
+                          <span>Uppercase letter</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${passwordValidation.hasLowercase ? 'text-green-600' : 'text-red-500'}`}>
+                          <span>{passwordValidation.hasLowercase ? '✓' : '✗'}</span>
+                          <span>Lowercase letter</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-red-500'}`}>
+                          <span>{passwordValidation.hasNumber ? '✓' : '✗'}</span>
+                          <span>Number</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
+                          <span>{passwordValidation.hasSpecialChar ? '✓' : '✗'}</span>
+                          <span>Special character</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Password Update Restricted:</strong> Only COO role can update admin passwords.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -820,8 +1119,12 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin }) => 
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Update Admin
+            <button 
+              type="submit" 
+              className={`btn-primary ${formData.password && !passwordValidation.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={formData.password && !passwordValidation.isValid || isUpdating}
+            >
+              {isUpdating ? 'Updating...' : 'Update Admin'}
             </button>
           </div>
         </form>
