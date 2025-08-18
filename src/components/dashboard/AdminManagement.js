@@ -84,6 +84,43 @@ const AdminManagement = () => {
     validatePassword(password);
   };
 
+  // Clear form data and reset validation
+  const clearFormData = () => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      role: 'HR',
+      permissions: {
+        viewAnalytics: true,
+        viewSuggestions: true,
+        manageSuggestions: false,
+        manageAdmins: false,
+        exportData: false
+      }
+    });
+    setPasswordValidation({
+      hasUppercase: false,
+      hasLowercase: false,
+      hasNumber: false,
+      hasSpecialChar: false,
+      isValid: false
+    });
+  };
+
+  // Handle modal close with form clearing
+  const handleCloseCreateModal = () => {
+    clearFormData();
+    setShowCreateModal(false);
+  };
+
+  const handleCloseEditModal = () => {
+    clearFormData();
+    setShowEditModal(false);
+    setSelectedAdmin(null);
+  };
+
   useEffect(() => {
     fetchAdmins();
   }, []);
@@ -176,7 +213,7 @@ const AdminManagement = () => {
       return;
     }
 
-    // Only COO can change passwords
+    // Only COO can change passwords when updating existing admins
     if (formData.password && currentAdmin.role !== 'COO') {
       toast.error('Only COO role can update admin passwords');
       return;
@@ -315,7 +352,7 @@ const AdminManagement = () => {
   }
 
   return (
-    <div className={!showCreateModal ? "space-y-6" : ""}>
+    <div className={!showCreateModal && !showEditModal ? "space-y-6" : ""}>
       {/* Loading Overlay */}
       {(isCreating || isUpdating) && (
         <div className="fixed inset-0 bg-ghost-900 bg-opacity-50 flex items-center justify-center z-50">
@@ -430,7 +467,7 @@ const AdminManagement = () => {
             <div className="ml-3">
               <h3 className="text-sm font-medium text-blue-800">Password Update Restriction</h3>
               <p className="text-sm text-blue-700 mt-1">
-                You can edit admin accounts, but <strong>only COO role users can update passwords</strong>. Password fields will be disabled for your role.
+                You can create new admins with passwords and edit admin accounts, but <strong>only COO role users can update existing admin passwords</strong>.
               </p>
             </div>
           </div>
@@ -677,7 +714,7 @@ const AdminManagement = () => {
           formData={formData}
           setFormData={setFormData}
           onSubmit={handleCreateAdmin}
-          onClose={() => setShowCreateModal(false)}
+          onClose={handleCloseCreateModal}
           isCreating={isCreating}
         />
       )}
@@ -688,7 +725,7 @@ const AdminManagement = () => {
           formData={formData}
           setFormData={setFormData}
           onSubmit={handleUpdateAdmin}
-          onClose={() => setShowEditModal(false)}
+          onClose={handleCloseEditModal}
           admin={selectedAdmin}
           isUpdating={isUpdating}
           currentAdminRole={currentAdmin?.role}
@@ -825,27 +862,39 @@ const CreateAdminModal = ({ formData, setFormData, onSubmit, onClose, isCreating
                 placeholder="Enter password"
               />
               
-              {/* Password Requirements */}
+              {/* Password Requirements - Compact Design */}
               {formData.password && (
-                <div className="mt-2 space-y-1">
-                  <p className="text-xs font-medium text-ghost-700">Password Requirements:</p>
-                  <div className="grid grid-cols-2 gap-1 text-xs">
-                    <div className={`flex items-center space-x-1 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
-                      <span>{passwordValidation.hasUppercase ? '✓' : '✗'}</span>
-                      <span>Uppercase letter</span>
-                    </div>
-                    <div className={`flex items-center space-x-1 ${passwordValidation.hasLowercase ? 'text-green-600' : 'text-red-500'}`}>
-                      <span>{passwordValidation.hasLowercase ? '✓' : '✗'}</span>
-                      <span>Lowercase letter</span>
-                    </div>
-                    <div className={`flex items-center space-x-1 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-red-500'}`}>
-                      <span>{passwordValidation.hasNumber ? '✓' : '✗'}</span>
-                      <span>Number</span>
-                    </div>
-                    <div className={`flex items-center space-x-1 ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
-                      <span>{passwordValidation.hasSpecialChar ? '✓' : '✗'}</span>
-                      <span>Special character</span>
-                    </div>
+                <div className="mt-2">
+                  <p className="text-xs font-medium text-ghost-700 mb-1">Password Requirements:</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      passwordValidation.hasUppercase 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {passwordValidation.hasUppercase ? '✓' : '✗'} Uppercase
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      passwordValidation.hasLowercase 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {passwordValidation.hasLowercase ? '✓' : '✗'} Lowercase
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      passwordValidation.hasNumber 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {passwordValidation.hasNumber ? '✓' : '✗'} Number
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      passwordValidation.hasSpecialChar 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {passwordValidation.hasSpecialChar ? '✓' : '✗'} Special
+                    </span>
                   </div>
                 </div>
               )}
@@ -976,7 +1025,7 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin, isUpd
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-ghost-700 mb-2">
-                First Name *
+                First Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -990,7 +1039,7 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin, isUpd
 
             <div>
               <label className="block text-sm font-medium text-ghost-700 mb-2">
-                Last Name *
+                Last Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -1004,7 +1053,7 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin, isUpd
 
             <div>
               <label className="block text-sm font-medium text-ghost-700 mb-2">
-                Email *
+                Email <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
@@ -1033,25 +1082,37 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin, isUpd
                   
                   {/* Password Requirements - only show if password is being changed */}
                   {formData.password && (
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xs font-medium text-ghost-700">Password Requirements:</p>
-                      <div className="grid grid-cols-2 gap-1 text-xs">
-                        <div className={`flex items-center space-x-1 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
-                          <span>{passwordValidation.hasUppercase ? '✓' : '✗'}</span>
-                          <span>Uppercase letter</span>
-                        </div>
-                        <div className={`flex items-center space-x-1 ${passwordValidation.hasLowercase ? 'text-green-600' : 'text-red-500'}`}>
-                          <span>{passwordValidation.hasLowercase ? '✓' : '✗'}</span>
-                          <span>Lowercase letter</span>
-                        </div>
-                        <div className={`flex items-center space-x-1 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-red-500'}`}>
-                          <span>{passwordValidation.hasNumber ? '✓' : '✗'}</span>
-                          <span>Number</span>
-                        </div>
-                        <div className={`flex items-center space-x-1 ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
-                          <span>{passwordValidation.hasSpecialChar ? '✓' : '✗'}</span>
-                          <span>Special character</span>
-                        </div>
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-ghost-700 mb-1">Password Requirements:</p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          passwordValidation.hasUppercase 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {passwordValidation.hasUppercase ? '✓' : '✗'} Uppercase
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          passwordValidation.hasLowercase 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {passwordValidation.hasLowercase ? '✓' : '✗'} Lowercase
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          passwordValidation.hasNumber 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {passwordValidation.hasNumber ? '✓' : '✗'} Number
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          passwordValidation.hasSpecialChar 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {passwordValidation.hasSpecialChar ? '✓' : '✗'} Special
+                        </span>
                       </div>
                     </div>
                   )}
@@ -1066,7 +1127,7 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin, isUpd
                     </div>
                     <div className="ml-3">
                       <p className="text-sm text-yellow-800">
-                        <strong>Password Update Restricted:</strong> Only COO role can update admin passwords.
+                        <strong>Password Update Restricted:</strong> Only COO role can update existing admin passwords.
                       </p>
                     </div>
                   </div>
@@ -1076,7 +1137,7 @@ const EditAdminModal = ({ formData, setFormData, onSubmit, onClose, admin, isUpd
 
             <div>
               <label className="block text-sm font-medium text-ghost-700 mb-2">
-                Role *
+                Role <span className="text-red-500">*</span>
               </label>
               <select
                 value={formData.role}
