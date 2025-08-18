@@ -58,6 +58,59 @@ const AdminManagement = () => {
     isValid: false
   });
 
+  // Utility function to handle API error responses
+  const handleApiError = (error, defaultMessage) => {
+    console.error(`❌ ${defaultMessage}:`, error);
+    console.error('❌ Error response:', error.response?.data);
+    
+    if (error.response?.data) {
+      const responseData = error.response.data;
+      
+      // Handle validation errors with details array
+      if (responseData.details && Array.isArray(responseData.details)) {
+        responseData.details.forEach(err => {
+          if (err.field === 'password') {
+            toast.error(err.message);
+          } else {
+            toast.error(`${err.field}: ${err.message}`);
+          }
+        });
+        return;
+      }
+      // Handle single error message
+      else if (responseData.message) {
+        toast.error(responseData.message);
+        return;
+      }
+      // Handle error field
+      else if (responseData.error) {
+        toast.error(responseData.error);
+        return;
+      }
+      // Handle string response
+      else if (typeof responseData === 'string') {
+        toast.error(responseData);
+        return;
+      }
+    }
+    
+    // Fallback to error message or default
+    if (error.message) {
+      toast.error(error.message);
+    } else {
+      toast.error(defaultMessage);
+    }
+  };
+
+  // Utility function to handle API success responses
+  const handleApiSuccess = (response, defaultMessage) => {
+    if (response?.data?.message) {
+      toast.success(response.data.message);
+    } else {
+      toast.success(defaultMessage);
+    }
+  };
+
   // Password validation function
   const validatePassword = (password) => {
     const hasUppercase = /[A-Z]/.test(password);
@@ -131,9 +184,29 @@ const AdminManagement = () => {
       const response = await axios.get(ENDPOINTS.ADMIN_ADMINS);
       const adminsData = response.data.admins || response.data || [];
       setAdmins(adminsData);
+      setError(null); // Clear any previous errors
     } catch (error) {
-      console.error('Failed to fetch admins:', error);
-      setError(error.response?.data?.error || error.message || 'Failed to fetch admins');
+      // Handle different types of error responses
+      let errorMessage = 'Failed to fetch admins';
+      
+      if (error.response?.data) {
+        const responseData = error.response.data;
+        
+        // Handle different error response formats
+        if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseData.details && Array.isArray(responseData.details)) {
+          errorMessage = responseData.details.map(detail => detail.message).join(', ');
+        } else if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       setAdmins([]); // Set empty array on error
     } finally {
       setLoading(false);
@@ -158,48 +231,13 @@ const AdminManagement = () => {
     try {
       const response = await axios.post(ENDPOINTS.ADMIN_ADMINS, formData);
       
-      toast.success('Admin created successfully');
+      // Handle success response
+      handleApiSuccess(response, 'Admin created successfully');
       setShowCreateModal(false);
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        password: '',
-        role: 'HR',
-        permissions: {
-          viewAnalytics: true,
-          viewSuggestions: true,
-          manageSuggestions: false,
-          manageAdmins: false,
-          exportData: false
-        }
-      });
-      // Reset password validation
-      setPasswordValidation({
-        hasUppercase: false,
-        hasLowercase: false,
-        hasNumber: false,
-        hasSpecialChar: false,
-        isValid: false
-      });
+      clearFormData();
       fetchAdmins();
     } catch (error) {
-      console.error('❌ Failed to create admin:', error);
-      console.error('❌ Error response:', error.response?.data);
-      
-      // Handle backend validation errors
-      if (error.response?.data?.details) {
-        const validationErrors = error.response.data.details;
-        validationErrors.forEach(err => {
-          if (err.field === 'password') {
-            toast.error(err.message);
-          } else {
-            toast.error(`${err.field}: ${err.message}`);
-          }
-        });
-      } else {
-        toast.error('Failed to create admin. Please try again.');
-      }
+      handleApiError(error, 'Failed to create admin');
     } finally {
       setIsCreating(false);
     }
@@ -233,35 +271,16 @@ const AdminManagement = () => {
         password: undefined
       };
       
-      await axios.put(ENDPOINTS.ADMIN_ADMIN_BY_ID(selectedAdmin._id), updateData);
-      toast.success('Admin updated successfully');
+      const response = await axios.put(ENDPOINTS.ADMIN_ADMIN_BY_ID(selectedAdmin._id), updateData);
+      
+      // Handle success response
+      handleApiSuccess(response, 'Admin updated successfully');
       setShowEditModal(false);
       setSelectedAdmin(null);
-      // Reset password validation
-      setPasswordValidation({
-        hasUppercase: false,
-        hasLowercase: false,
-        hasNumber: false,
-        hasSpecialChar: false,
-        isValid: false
-      });
+      clearFormData();
       fetchAdmins();
     } catch (error) {
-      console.error('Failed to update admin:', error);
-      
-      // Handle backend validation errors
-      if (error.response?.data?.details) {
-        const validationErrors = error.response.data.details;
-        validationErrors.forEach(err => {
-          if (err.field === 'password') {
-            toast.error(err.message);
-          } else {
-            toast.error(`${err.field}: ${err.message}`);
-          }
-        });
-      } else {
-        toast.error('Failed to update admin');
-      }
+      handleApiError(error, 'Failed to update admin');
     } finally {
       setIsUpdating(false);
     }
@@ -275,12 +294,13 @@ const AdminManagement = () => {
     
     if (window.confirm('Are you sure you want to deactivate this admin?')) {
       try {
-        await axios.patch(`/api/admin/admins/${adminId}/status`, { isActive: false });
-        toast.success('Admin deactivated successfully');
+        const response = await axios.patch(`/api/admin/admins/${adminId}/status`, { isActive: false });
+        
+        // Handle success response
+        handleApiSuccess(response, 'Admin deactivated successfully');
         fetchAdmins();
       } catch (error) {
-        console.error('Failed to deactivate admin:', error);
-        toast.error('Failed to deactivate admin');
+        handleApiError(error, 'Failed to deactivate admin');
       }
     }
   };
