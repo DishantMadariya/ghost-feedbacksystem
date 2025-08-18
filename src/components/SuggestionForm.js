@@ -107,7 +107,8 @@ const SuggestionForm = () => {
               <img
                 src="/favicon.svg"
                 alt="Ghost Suggestion Box"
-                className="h-9 w-8 object-contain"
+                className="object-cover"
+                style={{ width: '6%', height: 'auto' }}
               />
               <div>
                 <h1 className="text-2xl font-bold text-ghost-900">Ghost Feedback System</h1>
